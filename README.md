@@ -3,6 +3,7 @@
 Dependencies and requirements used in this script:
 
 [![Badge](https://img.shields.io/badge/Python-3.12-lightblue?style=for-the-badge&logo=Python)](https://www.python.org/)
+[![Badge](https://img.shields.io/badge/pytube-15.0-lightblue?style=for-the-badge&logo=Python)](https://www.python.org/)
 </div>
 
 # 📑 Info
