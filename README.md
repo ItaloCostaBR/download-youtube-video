@@ -3,11 +3,11 @@
 Dependencies and requirements used in this script:
 
 [![Badge](https://img.shields.io/badge/Python-3.12-lightblue?style=for-the-badge&logo=Python)](https://www.python.org/)
-[![Badge](https://img.shields.io/badge/pytube-15.0-lightblue?style=for-the-badge&logo=Python)](https://www.python.org/)
+[![Badge](https://img.shields.io/badge/yt_dlp-2024.11.18-lightblue?style=for-the-badge&logo=Python)](https://www.python.org/)
 </div>
 
 # 📑 Info
-Apart from **Python** and **Pytube**, you will also need to have **FFmpeg** installed on your system. **FFmpeg** is a command-line tool used for handling multimedia files.
+Apart from **Python** and **yt-dlp**, you will also need to have **FFmpeg** installed on your system. **FFmpeg** is a command-line tool used for handling multimedia files.
 [Learn more about install.](https://phoenixnap.com/kb/ffmpeg-windows)
 
 # 📑 Development server

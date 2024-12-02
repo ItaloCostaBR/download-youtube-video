@@ -1,13 +1,10 @@
 import os
-import re
+import platform
+import subprocess
 import time
 
-from pytube import Playlist, YouTube
-from tenacity import retry, stop_after_attempt, wait_fixed
-from tqdm import tqdm
+from yt_dlp import YoutubeDL
 
-# Comment above line and uncomment below line if you're using pytubefix
-# from pytubefix import Playlist, YouTube
 outputs_folder = 'outputs'
 
 def name_project():
@@ -32,9 +29,8 @@ def text_start_fn(text):
     print("""*******************************""")
 def menu_options():
     print('\n1. Download Video')
-    print('2. Download Playlist')
-    print('3. Convert to mp3')
-    print('4. Exit\n')
+    print('2. Download MP3')
+    print('3. Exit\n')
 def invalid_option():
     print('Invalid option! Try entering the option number.\nRestarting system...')
     time.sleep(2)
@@ -50,86 +46,79 @@ def finish_app():
     """)
 def choose_options():
     try:
-        chosen_option = int(input('Choose an option: '))
+        chosen_option = int(input('Choose an option: ').strip())
 
         if chosen_option == 1:
-            print('1. Download Video')
+            start_download()
 
         elif chosen_option == 2:
-            start_download_playlist()
+            start_download(True)
 
         elif chosen_option == 3:
-            print('3. Convert to mp3')
-
-        elif chosen_option == 4:
             finish_app()
 
         else:
             invalid_option()
     except ValueError:
         invalid_option()
+def start_download(only_audio=False):
+    playlist_url = input("Enter the url: ").strip()
+    resolution = '720p'
 
-def start_download_playlist():
-    playlist_url = input("Enter the playlist url: ")
-    resolutions = ["240p", "360p", "480p", "720p", "1080p", "1440p", "2160p"]
-    resolution = input(f"Please select a resolution {resolutions}: ")
-    download_playlist(playlist_url, resolution)
+    if not only_audio:
+        resolutions = ["360p", "720p", "1080p"]
+        resolution = input(f"Please select a resolution {resolutions}: ").strip()
 
-def sanitize_filename(filename):
-    return re.sub(r'[<>:"/\\|?*]', '-', filename)
+    download(playlist_url, resolution, only_audio=only_audio)
+def download(url, resolution='720p', only_audio=False):
+    """
+    Function to download all videos or audios from a playlist.
+    :param resolution: Is the quality of the video
+    :param url: URL of the YouTube playlist.
+    :param only_audio: If True, downloads only the audios.
+    """
+    output=outputs_folder
+    path_custom = '/%(playlist_title)s/' if 'playlist' in url else ''
 
-@retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
-def download_with_retries(stream, filename):
-    stream.download(filename=filename)
+    try:
+        ydl_opts = {
+            'outtmpl': f'{output}{path_custom}/%(title)s.%(ext)s',
+            'format': f'bestvideo[height<={resolution.replace("p", "")}][ext=mp4]+bestaudio[ext=m4a]' if not only_audio else 'bestaudio/best',
+            'postprocessors': [
+                {
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }
+            ] if only_audio else [],
+            'merge_output_format': 'mp4',
+            'ignoreerrors': True,
+        }
 
-def progress_function(stream, chunk, bytes_remaining):
-    total_size = stream.filesize
-    bytes_downloaded = total_size - bytes_remaining
-    percentage_of_completion = bytes_downloaded / total_size * 100
-    print(f"Downloading... {percentage_of_completion:.2f}% complete", end="\r")
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        print("Playlist baixada com sucesso!")
 
-def download_playlist(playlist_url, resolution):
-    playlist = Playlist(playlist_url)
-    playlist_name = sanitize_filename(re.sub(r'\W+', '-', playlist.title))
-
-    if not os.path.exists(os.path.join(outputs_folder, playlist_name)):
-        os.mkdir(os.path.join(outputs_folder, playlist_name))
-
-    for index, video in enumerate(tqdm(playlist.videos, desc="Downloading playlist", unit="video"), start=1):
-        yt = YouTube(video.watch_url, on_progress_callback=progress_function)
-        video_streams = yt.streams.filter(res=resolution)
-
-        video_filename = sanitize_filename(f"{index}. {yt.title}.mp4")
-        video_path = os.path.join(playlist_name, video_filename)
-
-        if os.path.exists(video_path):
-            print(f"{video_filename} already exists")
-            continue
-
-        if not video_streams:
-            highest_resolution_stream = yt.streams.get_highest_resolution()
-            video_name = sanitize_filename(highest_resolution_stream.default_filename)
-            print(f"Downloading {video_name} in {highest_resolution_stream.resolution}")
-            download_with_retries(highest_resolution_stream, video_path)
-        else:
-            video_stream = video_streams.first()
-            video_name = sanitize_filename(video_stream.default_filename)
-            print(f"Downloading video for {video_name} in {resolution}")
-            download_with_retries(video_stream, "video.mp4")
-
-            audio_stream = yt.streams.get_audio_only()
-            print(f"Downloading audio for {video_name}")
-            download_with_retries(audio_stream, "audio.mp4")
-
-            os.system("ffmpeg -y -i video.mp4 -i audio.mp4 -c:v copy -c:a aac final.mp4 -loglevel quiet -stats")
-            os.rename("final.mp4", video_path)
-            os.remove("video.mp4")
-            os.remove("audio.mp4")
-
-        print("----------------------------------")
+        open_directory()
+    except Exception as e:
+        print(f"Erro ao baixar a playlist: {e}")
+def open_directory():
+    path = outputs_folder
+    if platform.system() == "Windows":
+        subprocess.run(["explorer", path])
+    elif platform.system() == "Darwin":
+        subprocess.run(["open", path])
+    elif platform.system() == "Linux":
+        subprocess.run(["xdg-open", path])
+    else:
+        print("\nSistema operacional não suportado.\n")
 
 def main():
     os.system('clear')
+
+    if not os.path.exists(outputs_folder):
+        os.makedirs(outputs_folder)
+
     name_project()
     menu_options()
     choose_options()
